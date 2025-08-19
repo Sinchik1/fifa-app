@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <title>FIFA Статистика (простая версия)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --brand: #10b981; }
+    body { font-family: -apple-system, system-ui, Arial, sans-serif; background:#f6f7f9; color:#111; margin:0; }
+    .wrap { max-width: 860px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-size: 24px; margin: 0 0 16px; }
+    .grid { display: grid; gap:16px; grid-template-columns: 1fr; }
+    @media (min-width: 800px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { background:#fff; border-radius:16px; padding:16px; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+    .title { font-size:18px; margin:0 0 12px; }
+    label { display:block; font-size:13px; color:#555; margin-bottom:6px; }
+    input, select { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:12px; font-size:14px; }
+    .row { display:grid; gap:12px; grid-template-columns: 1fr 1fr; }
+    .btn { cursor:pointer; border:0; background:var(--brand); color:#fff; padding:10px 14px; border-radius:12px; font-weight:600; box-shadow:0 4px 10px rgba(16,185,129,0.25); }
+    .btn:active { transform: translateY(1px); }
+    .btn-outline { cursor:pointer; border:1px solid #ddd; background:#fff; padding:8px 12px; border-radius:10px; }
+    .muted { color:#666; font-size:13px; }
+    ul{ list-style:none; padding:0; margin:0; }
+    li{ padding:10px 0; border-bottom:1px solid #eee; }
+    .stat { font-weight:600; }
+    .ok { color:#0f766e; font-size:13px; margin-top:6px; }
+    .err{ color:#b91c1c; font-size:13px; margin-top:6px; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { padding:10px 8px; border-bottom:1px solid #eee; text-align:left; font-size:14px; }
+    th { color:#444; font-weight:700; }
+    .right { text-align:right; }
+    .tabs { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+    .tab { border:1px solid #ddd; background:#fff; padding:8px 12px; border-radius:10px; cursor:pointer; font-weight:600; }
+    .tab.active { background: var(--brand); color:#fff; border-color: transparent; }
+    .hidden { display:none; }
+    .footer{ margin-top:16px; font-size:12px; color:#777; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>FIFA Статистика (локальная версия)</h1>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="table">Таблица</button>
+      <button class="tab" data-tab="match">Новый матч</button>
+      <button class="tab" data-tab="history">История</button>
+      <button class="tab" data-tab="players">Игроки</button>
+    </div>
+
+    <!-- Таблица лидеров -->
+    <section id="tab-table" class="card">
+      <h2 class="title">Таблица лидеров</h2>
+      <div id="leaderboard-empty" class="muted">Пока нет игроков. Добавьте их во вкладке «Игроки».</div>
+      <table id="leaderboard" class="hidden">
+        <thead>
+          <tr>
+            <th>Игрок</th>
+            <th class="right">W</th>
+            <th class="right">L</th>
+            <th class="right">D</th>
+            <th class="right">Winrate</th>
+            <th class="right">Матчи</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+    </section>
+
+    <!-- Новый матч -->
+    <section id="tab-match" class="card hidden">
+      <h2 class="title">Новый матч</h2>
+      <div id="need-players" class="muted">Добавьте минимум двух игроков во вкладке «Игроки», чтобы фиксировать матчи.</div>
+      <div id="match-form" class="hidden">
+        <div class="row">
+          <div>
+            <label>Игрок 1</label>
+            <select id="p1"></select>
+          </div>
+          <div>
+            <label>Игрок 2</label>
+            <select id="p2"></select>
+          </div>
+          <div>
+            <label>Голы игрока 1</label>
+            <input id="s1" type="number" min="0" value="0" />
+          </div>
+          <div>
+            <label>Голы игрока 2</label>
+            <input id="s2" type="number" min="0" value="0" />
+          </div>
+        </div>
+        <div style="margin-top:12px; display:flex; gap:8px;">
+          <button id="save-match" class="btn">Сохранить матч</button>
+          <div id="match-msg" class="ok" style="display:none;">Матч сохранён!</div>
+          <div id="match-err" class="err" style="display:none;">Ошибка</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- История матчей -->
+    <section id="tab-history" class="card hidden">
+      <h2 class="title">История матчей</h2>
+      <div id="history-empty" class="muted">Пока нет матчей.</div>
+      <ul id="history-list" class="hidden"></ul>
+    </section>
+
+    <!-- Игроки -->
+    <section id="tab-players" class="card hidden">
+      <h2 class="title">Игроки</h2>
+      <div class="row">
+        <div>
+          <label>Имя игрока</label>
+          <input id="player-name" placeholder="Например, Данил" />
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button id="add-player" class="btn">Добавить</button>
+        </div>
+      </div>
+      <div id="player-msg" class="ok" style="display:none;">Игрок добавлен!</div>
+      <div id="player-err" class="err" style="display:none;">Ошибка</div>
+
+      <h3 class="title" style="margin-top:16px;">Список игроков</h3>
+      <ul id="players-list"></ul>
+    </section>
+
+    <div class="footer muted">Данные сохраняются локально в браузере (localStorage).</div>
+  </div>
+
+  <script>
+    // ====== ПАМЯТЬ (localStorage) ======
+    const KEY = "fifastats_local_v1";
+    function loadState() {
+      try { return JSON.parse(localStorage.getItem(KEY)) || { players: [], matches: [] }; }
+      catch { return { players: [], matches: [] }; }
+    }
+    function saveState() {
+      localStorage.setItem(KEY, JSON.stringify({ players, matches }));
+    }
+
+    // ====== ДАННЫЕ ======
+    let { players, matches } = loadState();
+
+    // ====== ХЕЛПЕРЫ ======
+    function byId(id){ return document.getElementById(id); }
+    function uuid(){ return crypto.randomUUID ? crypto.randomUUID() : String(Date.now())+Math.random(); }
+    function fmtDate(iso){ try{ return new Date(iso).toLocaleString(); }catch{ return iso; } }
+
+    // ====== UI: вкладки ======
+    const tabs = document.querySelectorAll(".tab");
+    tabs.forEach(btn => {
+      btn.addEventListener("click", () => {
+        tabs.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        const name = btn.dataset.tab;
+        ["table","match","history","players"].forEach(t => {
+          byId("tab-"+t).classList.toggle("hidden", t !== name);
+        });
+      });
+    });
+
+    // ====== Игроки ======
+    function addPlayer(nameRaw){
+      const name = String(nameRaw || "").trim();
+      if(!name){ showPlayerErr("Введите имя"); return; }
+      if(players.some(p => p.name.toLowerCase() === name.toLowerCase())){
+        showPlayerErr("Такой игрок уже есть"); return;
+      }
+      players.push({ name, wins:0, losses:0, draws:0 });
+      saveState();
+      renderAll();
+      showPlayerOk("Игрок добавлен!");
+    }
+    function removePlayer(name){
+      players = players.filter(p => p.name !== name);
+      saveState();
+      renderAll();
+    }
+
+    // ====== Матч ======
+    function recordMatch(p1, p2, s1, s2){
+      if(!p1 || !p2 || p1 === p2){ showMatchErr("Выберите двух разных игроков"); return; }
+      const a = Number(s1)||0, b = Number(s2)||0;
+      matches.unshift({ id: uuid(), date: new Date().toISOString(), player1: p1, player2: p2, score1: a, score2: b });
+      // обновляем статистику
+      players = players.map(p => {
+        if(p.name === p1){
+          if(a>b) return {...p, wins:p.wins+1};
+          if(a<b) return {...p, losses:p.losses+1};
+          return {...p, draws:p.draws+1};
+        }
+        if(p.name === p2){
+          if(b>a) return {...p, wins:p.wins+1};
+          if(b<a) return {...p, losses:p.losses+1};
+          return {...p, draws:p.draws+1};
+        }
+        return p;
+      });
+      saveState();
+      renderAll();
+      showMatchOk("Матч сохранён!");
+    }
+
+    // ====== РЕНДЕР ======
+    function renderPlayersList(){
+      const list = byId("players-list");
+      list.innerHTML = "";
+      players.forEach(p => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div><span class="stat">${p.name}</span></div>
+            <button class="btn-outline" data-remove="${p.name}">Удалить</button>
+          </div>`;
+        list.appendChild(li);
+      });
+      list.querySelectorAll("[data-remove]").forEach(btn => {
+        btn.addEventListener("click", () => removePlayer(btn.dataset.remove));
+      });
+    }
+
+    function renderLeaderboard(){
+      const empty = byId("leaderboard-empty");
+      const table = byId("leaderboard");
+      const body = byId("leaderboard-body");
+      if(players.length === 0){ empty.classList.remove("hidden"); table.classList.add("hidden"); body.innerHTML=""; return; }
+      empty.classList.add("hidden"); table.classList.remove("hidden");
+
+      const sorted = [...players].sort((a,b) => {
+        if(b.wins !== a.wins) return b.wins - a.wins;
+        const ta = a.wins+a.losses+a.draws, tb = b.wins+b.losses+b.draws;
+        const wra = ta ? a.wins/ta : 0, wrb = tb ? b.wins/tb : 0;
+        return wrb - wra;
+      });
+
+      body.innerHTML = "";
+      sorted.forEach(p => {
+        const total = p.wins + p.losses + p.draws;
+        const wr = total ? Math.round((p.wins/total)*100) : 0;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${p.name}</td>
+          <td class="right">${p.wins}</td>
+          <td class="right">${p.losses}</td>
+          <td class="right">${p.draws}</td>
+          <td class="right">${wr}%</td>
+          <td class="right">${total}</td>
+        `;
+        body.appendChild(tr);
+      });
+    }
+
+    function renderMatchForm(){
+      const need = byId("need-players");
+      const form = byId("match-form");
+      const p1 = byId("p1"), p2 = byId("p2");
+      const s1 = byId("s1"), s2 = byId("s2");
+      if(players.length < 2){ need.classList.remove("hidden"); form.classList.add("hidden"); return; }
+      need.classList.add("hidden"); form.classList.remove("hidden");
+      // заполнить селекты
+      const names = players.map(p => p.name);
+      p1.innerHTML = names.map(n=>`<option>${n}</option>`).join("");
+      p2.innerHTML = names.map(n=>`<option>${n}</option>`).join("");
+      if(names.length >= 2){ p2.value = names[1]; }
+      byId("save-match").onclick = () => {
+        showMatchOk(""); showMatchErr("");
+        recordMatch(p1.value, p2.value, s1.value, s2.value);
+        s1.value = 0; s2.value = 0;
+      };
+    }
+
+    function renderHistory(){
+      const empty = byId("history-empty");
+      const list = byId("history-list");
+      if(matches.length === 0){ empty.classList.remove("hidden"); list.classList.add("hidden"); list.innerHTML=""; return; }
+      empty.classList.add("hidden"); list.classList.remove("hidden");
+
+      list.innerHTML = "";
+      matches.forEach(m => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div class="stat">${m.player1} ${m.score1}–${m.score2} ${m.player2}</div>
+          <div class="muted">${fmtDate(m.date)}</div>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function renderAll(){
+      renderPlayersList();
+      renderLeaderboard();
+      renderMatchForm();
+      renderHistory();
+    }
+
+    // ====== Сообщения ======
+    function show(el, text){ el.style.display = text ? "block":"none"; el.textContent = text || ""; }
+    function showPlayerOk(t){ show(byId("player-msg"), t); show(byId("player-err"), ""); }
+    function showPlayerErr(t){ show(byId("player-err"), t); show(byId("player-msg"), ""); }
+    function showMatchOk(t){ show(byId("match-msg"), t); show(byId("match-err"), ""); }
+    function showMatchErr(t){ show(byId("match-err"), t); show(byId("match-msg"), ""); }
+
+    // ====== СВЯЗЬ С КНОПКАМИ ======
+    byId("add-player").onclick = () => {
+      const name = byId("player-name").value;
+      byId("player-name").value = "";
+      showPlayerOk(""); showPlayerErr("");
+      addPlayer(name);
+    };
+
+    // старт
+    renderAll();
+  </script>
+</body>
+</html>
